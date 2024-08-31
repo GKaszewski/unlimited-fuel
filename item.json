@@ -1,0 +1,14 @@
+﻿{
+  "Title": "Unlimited fuel",
+  "Description": "No more refueling",
+  "PreviewImageUrl": "https://vtolvr-mods.com/static/img/Logo.png",
+  "MetaData": {
+    "DllName": "UnlimitedFuel.dll",
+    "AllowLoadOnStart": true,
+    "ShowOnMainList": true,
+    "DllHash": ""
+  },
+  "DependenciesIds": [
+    3265689427
+  ]
+}
