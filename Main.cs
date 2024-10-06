@@ -1,28 +1,79 @@
 ﻿global using static UnlimitedFuel.Logger;
-using System;
-using System.IO;
 using System.Reflection;
+using System.IO;
 using HarmonyLib;
 using ModLoader.Framework;
 using ModLoader.Framework.Attributes;
+using UnityEngine;
 using VTOLAPI;
 
 
 namespace UnlimitedFuel;
 
+public class UnlimitedFuelComponent : MonoBehaviour {
+    private GameObject playerGameObject;
+    private VehicleMaster vm;
+    private FuelTank[] fuelTanks;
+    private double fuelValue = 760.0;
+
+    private void TryToSetFields() {
+        if (playerGameObject && fuelTanks != null) return;
+        if (fuelTanks is { Length: > 0 }) return;
+        
+        playerGameObject = VTAPI.GetPlayersVehicleGameObject();
+        if (playerGameObject == null) return;
+        vm = playerGameObject.GetComponent<VehicleMaster>();
+        if (vm == null) {
+            LogWarn("VehicleMaster not found");
+            return;
+        }
+        
+        fuelTanks = vm.fuelTanks;
+
+        foreach (var fuelTank in fuelTanks) {
+            if (!fuelTank) continue;
+            if (fuelTank.currentFuel < 100.0) {
+                fuelTank.currentFuel = 760.0;
+                break;
+            }
+            fuelValue = fuelTank.currentFuel;
+            break;
+        }
+    }
+
+    private void Awake() {
+        TryToSetFields();
+    }
+    
+    private void Update() {
+        if (fuelTanks == null) {
+            TryToSetFields();
+        }
+        
+        foreach (var fuelTank in fuelTanks ?? []) {
+            var currentFuelField = AccessTools.Field(typeof(FuelTank), "currentFuel");
+            if (currentFuelField == null) {
+                LogError("currentFuelField is null");
+                return;
+            }
+            currentFuelField.SetValue(fuelTank, fuelValue);
+        }
+    }
+}
+
 [ItemId("gabrielkaszewski.UnlimitedFuel")] // Harmony ID for your mod, make sure this is unique
 public class Main : VtolMod {
     public string ModFolder;
+    private GameObject playerGameObject;
     
     private void Awake() {
         ModFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        Log($"Awake at {ModFolder}");
-        
         VTAPI.SceneLoaded += SceneLoaded;
     }
 
     public override void UnLoad() {
         // Destroy any objects
+        Destroy(playerGameObject.GetComponent<UnlimitedFuelComponent>());
     }
 
     private void SceneLoaded(VTScenes scenes) {
@@ -32,37 +83,10 @@ public class Main : VtolMod {
             case VTScenes.OpenWater:
             case VTScenes.MeshTerrain:
             case VTScenes.CustomMapBase_OverCloud:
+                playerGameObject = VTAPI.GetPlayersVehicleGameObject();
+                if (playerGameObject == null) return;
+                playerGameObject.AddComponent<UnlimitedFuelComponent>();
                 break;
         }
     }
-}
-
-[HarmonyPatch(typeof(FuelTank))]
-public class FuelTankPatch {
-    
-    [HarmonyPatch(nameof(FuelTank.RequestFuel), new Type[] { typeof(double) })]
-    [HarmonyPostfix]
-    private static void Postfix(double deltaFuel, FuelTank __instance) {
-        var playerGameObject = VTAPI.GetPlayersVehicleGameObject();
-        if (playerGameObject == null) return;
-        var vm = playerGameObject.GetComponent<VehicleMaster>();
-        if (vm == null) {
-            LogWarn("VehicleMaster not found");
-            return;
-        }
-
-        var fuelTanks = vm.fuelTanks;
-        var isAtLeastOneFuelTankPlayers = false;
-        foreach (var fuelTank in fuelTanks) {
-            if (fuelTank == __instance) {
-                isAtLeastOneFuelTankPlayers = true;
-                break;
-            }
-        }
-        
-        if (!isAtLeastOneFuelTankPlayers) return;
-        __instance.currentFuel = 760.0;
-    }
-
-    static bool Prepare() => true;
 }

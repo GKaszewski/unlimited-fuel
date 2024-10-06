@@ -4,7 +4,7 @@
   "PreviewImageUrl": "https://vtolvr-mods.com/static/img/Logo.png",
   "MetaData": {
     "DllName": "UnlimitedFuel.dll",
-    "AllowLoadOnStart": true,
+    "AllowLoadOnStart": false,
     "ShowOnMainList": true,
     "DllHash": ""
   },
