@@ -69,6 +69,13 @@ public class Main : VtolMod {
     private void Awake() {
         ModFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         VTAPI.SceneLoaded += SceneLoaded;
+        VTAPI.MissionReloaded += MissionReloaded;
+    }
+
+    private void MissionReloaded() {
+        playerGameObject = VTAPI.GetPlayersVehicleGameObject();
+        if (playerGameObject == null) return;
+        playerGameObject.AddComponent<UnlimitedFuelComponent>();
     }
 
     public override void UnLoad() {
